@@ -1,10 +1,15 @@
 #include "UARTReader.h"
 
-
-UARTReader::UARTReader(Stream& serialPort, char *startDelimiter, char stopCharacter) : serialPort(serialPort) {
+UARTReader::UARTReader(Stream& serialPort, char *startDelimiter, char stopCharacter, int maxBufferSize) : serialPort(serialPort) {
   this->startDelimiter = new char[1 + strlen(startDelimiter)];
   strcpy(this->startDelimiter, startDelimiter);
   this->stopCharacter = stopCharacter;
+  this->inputBuffer = new char[maxBufferSize];
+}
+
+UARTReader::~UARTReader() {
+  delete this->startDelimiter;
+  delete this->inputBuffer;
 }
 
 int UARTReader::getPacket() {

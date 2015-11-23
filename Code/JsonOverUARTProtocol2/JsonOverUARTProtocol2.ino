@@ -13,9 +13,9 @@
  */
 const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 
-Serial_&        uart2USB = Serial;
-HardwareSerial& uart2RPI = Serial1;
-UARTReader uartReader(Serial, "json:", '\n');
+//Serial_&        Serial = Serial;
+//HardwareSerial& uart2RPI = Serial1;
+UARTReader uartReader(Serial, (char*)"json:", '\n');
 
 
 void setup() {
@@ -44,17 +44,18 @@ void loop() {
     if(json.success()) {
       int n = json["cmd"];
       char sym = ((const char*)json["symbol"])[0];
-      uart2USB.print(sym);uart2USB.print(' ');uart2USB.println(n);
+      Serial.print(sym);Serial.print(' ');Serial.println(n);
 
       JsonObject& jsonResp = outputJsonBuffer.createObject();
       jsonResp["code"] = replicateSymbol(sym, n);
-      jsonResp.printTo(uart2USB);
-      uart2USB.println(); // must end with a '\n'
+      jsonResp.printTo(Serial);
+      Serial.println(); // must end with a '\n'
     }
   }
   
-  if(ret_code == UARTReader::OVERFLOW)
+  if(ret_code == UARTReader::BUFF_OVERFLOW)
     blinkLED();
+
 }
 
 const char* replicateSymbol(char symbol, int n) {
@@ -65,7 +66,7 @@ const char* replicateSymbol(char symbol, int n) {
   return resp;
 }
 
-#define LED_PIN 6
+#define LED_PIN 13
 void blinkLED() {
   pinMode(LED_PIN, OUTPUT);
   while(1) {
