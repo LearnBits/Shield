@@ -39,13 +39,13 @@ void loop() {
     StaticJsonBuffer<JSON_BUFFER_SIZE>  inputJsonBuffer; 
     StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
   
-    // Parse cmd
+    // Parse cmd message
     JsonObject& json = inputJsonBuffer.parseObject(uartReader.buffer());
     if(json.success()) {
       int n = json["cmd"];
       char sym = ((const char*)json["symbol"])[0];
       Serial.print(sym);Serial.print(' ');Serial.println(n);
-
+    // construct return message
       JsonObject& jsonResp = outputJsonBuffer.createObject();
       jsonResp["code"] = replicateSymbol(sym, n);
       jsonResp.printTo(Serial);

@@ -12,7 +12,7 @@
 //////////////////////
 //  Define Objects  //
 //////////////////////
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, DIN_NEO, NEO_GRB + NEO_KHZ800);
+
 
 
 ///////////////////////
@@ -26,12 +26,7 @@ void Init_LearnBitsShield(){
   Serial1.begin(57600); // Pi communication
   Serial2.begin(57600); // Bluetooth Communication
 
-  // initialize Neo pixels
-  pixels.begin(); // initializes NeoPixel library.
-  for(int i=0;i<NUMPIXELS;i++){
-    pixels.setPixelColor(i, pixels.Color(50,50,0)); // Set pixel color. 
-  }
-  pixels.show(); // Updated pixel color Hardware.
+
 
   // initialize motor driver
   pinMode(MOT_STBY, OUTPUT);
@@ -49,13 +44,19 @@ void Init_LearnBitsShield(){
 
 // Motors Functions
 //Move specific motor at speed and direction
-void move(int motor, int speed, int direction){
+void move(int motor, int speed){
 //motor: 0 for B 1 for A
 //speed: 0 is off, and 255 is full speed
 //direction: 0 clockwise, 1 counter-clockwise
 
   digitalWrite(MOT_STBY, HIGH); //disable standby
 
+  boolean direction=0;
+  if (speed<0){
+    direction=1;
+    speed=abs(speed);
+  }
+  
   boolean inPin1 = LOW;
   boolean inPin2 = HIGH;
 

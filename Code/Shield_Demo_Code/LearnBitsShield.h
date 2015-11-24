@@ -91,8 +91,8 @@
 void Init_LearnBitsShield();
 
 // Motors Functions
-//Move specific motor at speed and direction
-void move(int motor, int speed, int direction);
+//Move specific motor at speed
+void move(int motor, int speed);
   
 // Stop Motors
 void stop();
