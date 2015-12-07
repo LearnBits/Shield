@@ -1,5 +1,5 @@
 /*
-  LearnBits Raspberry Pi Shield - Demo Code - Arkadi Rafalovich 11/18/2015
+  LearnBits Raspberry Pi Shield - Arkadi Rafalovich 11/24/2015
   
   Description:
   LearnBits Raspberry pi Shield V0
@@ -81,7 +81,12 @@
 ///////////////////////////
 //  Neo Pixels Variables //
 ///////////////////////////
+
+extern Adafruit_NeoPixel pixels;
 #define NUMPIXELS      8
+//color table: http://www.rapidtables.com/web/color/RGB_Color.htm
+#define RGB_TABLE_SIZE 139
+extern const uint32_t RGB_TABLE[];
 
 ///////////////////////
 // Declare Functions //
