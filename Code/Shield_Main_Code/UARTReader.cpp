@@ -1,4 +1,5 @@
 #include "UARTReader.h"
+#define DEBUGPRINT
 
 UARTReader::UARTReader(Stream& serialPort, char *startDelimiter, char stopCharacter, int maxBufferSize) : serialPort(serialPort) {
   this->startDelimiter = new char[1 + strlen(startDelimiter)];
@@ -23,22 +24,30 @@ int UARTReader::getPacket() {
 
   i = 0;
   while( i < nBytes ) {
-    switch(mode) {
-      case SYNCING:
+    if(mode==SYNCING) {
         for( ; i < nBytes; i++) {
-          c = (char)serialPort.read();
+          c = (char)serialPort.read(); 
+#ifdef DEBUGPRINT
+            Serial.write(c);
+#endif 
           stepCounter = (c == startDelimiter[stepCounter] ? stepCounter + 1 : 0);
           if(stepCounter == completed) {  // sync'ed //
             //debug("sync'ed");
+#ifdef DEBUGPRINT
+            Serial.write("Package");
+#endif 
             index = stepCounter = 0;
             mode = RECEIVING;
+            i++;
             break; // inner for loop //
           }
         }
-        break;
-      case RECEIVING:
+    }else if(mode==RECEIVING){
         for( ; i < nBytes; i++) {
           c = (char)serialPort.read();
+#ifdef DEBUGPRINT
+            Serial.write(c);
+#endif 
           inputBuffer[index++] = c;
           if(c == stopCharacter) {  // we got a packet!! //
             //debug("got a packet!!"); inputBuffer[index] = '\0'; debug(buf);
@@ -52,9 +61,8 @@ int UARTReader::getPacket() {
             return OVERFLOW;
           } 
         }
-      break;
-    } // switch //
-  } // for //
+    }
+  } // while //
   return mode; // SYNCING OR RECEIVING
 }
 

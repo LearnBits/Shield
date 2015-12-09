@@ -5,7 +5,7 @@
  Demonstration code of the basic functionalities.
  
  */
-
+#define DEBUGPRINT
 
 ///////////////
 // libraries //
@@ -20,7 +20,7 @@
 #include "MPU6050.h"
 
 HardwareSerial& SerialPi=Serial1;
-
+///usb_serial_class& SerialPi=Serial;
 
 //////////////////////////
 // fnction decleration: //
@@ -41,7 +41,7 @@ void Sample_Sensors(unsigned long TimeStamp);
 ///////////////
 // Variables //
 ///////////////
-#define DEBUGPRINT
+
 
 // I2C Max addresses
 #define MAX_I2C_ADDR 0x7F
@@ -75,7 +75,7 @@ unsigned long MPU6050_Millis_Delay=0;
 // Json 
 const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 
-UARTReader uartReader(SerialPi, (char*)"json:", '\n');
+UARTReader uartReader(SerialPi, (char*)"json:", '\n'); // \n
 
 
 ///////////////
@@ -85,7 +85,6 @@ UARTReader uartReader(SerialPi, (char*)"json:", '\n');
 void setup() {
   // Initialize LearnBitsShield
   Init_LearnBitsShield();
-
   // Setup for Master mode, pins 18/19, external pullups, 400kHz //I2C_PULLUP_EXT
   Wire.begin();
 }// End Setup
