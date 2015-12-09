@@ -3,6 +3,7 @@
 UARTReader::UARTReader(Stream& serialPort, char *startDelimiter, char stopCharacter, int maxBufferSize) : serialPort(serialPort) {
   this->startDelimiter = new char[1 + strlen(startDelimiter)];
   strcpy(this->startDelimiter, startDelimiter);
+	this->completed = strlen(startDelimiter);
   this->stopCharacter = stopCharacter;
   this->inputBuffer = new char[maxBufferSize];
 }
@@ -26,10 +27,10 @@ int UARTReader::getPacket() {
       case SYNCING:
         for( ; i < nBytes; i++) {
           c = (char)serialPort.read();
-          count = (c == startDelimiter[count] ? count + 1 : 0);
-          if(count == strlen(startDelimiter)) {  // sync'ed //
+          stepCounter = (c == startDelimiter[stepCounter] ? stepCounter + 1 : 0);
+          if(stepCounter == completed) {  // sync'ed //
             //debug("sync'ed");
-            index = count = 0;
+            index = stepCounter = 0;
             mode = RECEIVING;
             break; // inner for loop //
           }
