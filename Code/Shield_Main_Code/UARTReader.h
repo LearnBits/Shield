@@ -40,7 +40,7 @@ class UARTReader
     
     int mode  = SYNCING;
     int index = 0; // static ptr for when data comes in separate chunks
-		int completed;
+		unsigned int completed;
     unsigned int stepCounter = 0;
     
     Stream& serialPort;

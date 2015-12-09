@@ -19,6 +19,8 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 
+HardwareSerial& SerialPi=Serial1;
+
 
 //////////////////////////
 // fnction decleration: //
@@ -73,7 +75,7 @@ unsigned long MPU6050_Millis_Delay=0;
 // Json 
 const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 
-UARTReader uartReader(Serial, (char*)"json:", '\n');
+UARTReader uartReader(SerialPi, (char*)"json:", '\n');
 
 
 ///////////////
@@ -137,8 +139,8 @@ void Parser_MSG(){
         JsonArray& Move_Data = jsonResp.createNestedArray("MOVE");
         Move_Data.add(Motor_Left_Val);
         Move_Data.add(Motor_Right_Val);
-        jsonResp.printTo(Serial);
-        Serial.println(); // must end with a '\n'
+        jsonResp.printTo(SerialPi);
+        SerialPi.println(); // must end with a '\n'
       }
       
       if (CMD_Type=="LED"){
@@ -157,8 +159,8 @@ void Parser_MSG(){
           uint32_t Color_Hex=pixels.getPixelColor(ii);
           Color_Data.add(Color_Hex);
         }
-        jsonResp.printTo(Serial);
-        Serial.println(); // must end with a '\n'
+        jsonResp.printTo(SerialPi);
+        SerialPi.println(); // must end with a '\n'
       }
 
       
@@ -171,8 +173,8 @@ void Parser_MSG(){
         for (int ii=0; ii<Num_I2C_Availble; ii++){
           ADDR_I2C_Data.add(Availble_I2C[ii]);
         }
-        jsonResp.printTo(Serial);
-        Serial.println(); // must end with a '\n'
+        jsonResp.printTo(SerialPi);
+        SerialPi.println(); // must end with a '\n'
       }
 
      if (CMD_Type=="MPU6050"){
@@ -181,8 +183,8 @@ void Parser_MSG(){
         JsonObject& jsonResp = outputJsonBuffer.createObject();
         jsonResp["RESP"] = "MPU6050";
         jsonResp["MSEC"] = MPU6050_Millis_Delay;
-        jsonResp.printTo(Serial);
-        Serial.println(); // must end with a '\n'
+        jsonResp.printTo(SerialPi);
+        SerialPi.println(); // must end with a '\n'
       }
 
     }// end json parse
@@ -274,8 +276,8 @@ void Sample_Sensors(unsigned long TimeStamp){
           MPU6050_Data.add(MPU6050_VAL[3]);
           MPU6050_Data.add(MPU6050_VAL[4]);
           MPU6050_Data.add(MPU6050_VAL[5]);
-          jsonResp.printTo(Serial);
-          Serial.println(); // must end with a '\n'
+          jsonResp.printTo(SerialPi);
+          SerialPi.println(); // must end with a '\n'
 
          
         }else{ // sensor was disconnected:
