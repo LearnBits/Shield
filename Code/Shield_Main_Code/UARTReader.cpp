@@ -1,61 +1,64 @@
 #include "UARTReader.h"
 
-UARTReader::UARTReader(Stream& serialPort, char *startDelimiter, char stopCharacter, int maxBufferSize) : serialPort(serialPort) {
-  this->startDelimiter = new char[1 + strlen(startDelimiter)];
-  strcpy(this->startDelimiter, startDelimiter);
-	this->completed = strlen(startDelimiter);
-  this->stopCharacter = stopCharacter;
-  this->inputBuffer = new char[maxBufferSize];
+UARTReader::UARTReader(Stream& serialPort, char *startStr, char stopChar, int maxBufSize) : serialPort(serialPort) {
+	this->UARTMode  = UART_SYNCING;
+  this->bufIndex = 0; // static ptr for when data comes in separate chunks
+  this->int syncSteps = 0;
+  this->startStr = new char[1 + strlen(startStr)];
+  strcpy(this->startStr, startStr);
+	this->syncDone = (int)strlen(startStr);
+  this->stopChar = stopChar;
+  this->inputBuffer = new char[maxBufSize];
 }
 
 UARTReader::~UARTReader() {
-  delete this->startDelimiter;
+  delete this->startStr;
   delete this->inputBuffer;
 }
 
 int UARTReader::getPacket() {
 
-  int nBytes, i;
+  int nBytes, bytesRead;
   char c;
   
   if(!(nBytes = serialPort.available()))
-    return mode;
+    return UARTMode;
 
-  i = 0;
-  while( i < nBytes ) {
-    switch(mode) {
-      case SYNCING:
-        for( ; i < nBytes; i++) {
+  bytesRead = 0;
+  while( bytesRead < nBytes ) {
+    switch(UARTMode) {
+      case UART_SYNCING:
+        while(bytesRead < nBytes && UARTMode == UART_SYNCING) {
           c = (char)serialPort.read();
-          stepCounter = (c == startDelimiter[stepCounter] ? stepCounter + 1 : 0);
-          if(stepCounter == completed) {  // sync'ed //
-            //debug("sync'ed");
-            index = stepCounter = 0;
-            mode = RECEIVING;
-            break; // inner for loop //
+					bytesRead++;
+          syncSteps = (c == startStr[syncSteps] ? syncSteps + 1 : 0);
+          if(syncSteps == syncDone) {  // sync'ed //
+            bufIndex = syncSteps = 0;
+            UARTMode = UART_RECEIVING;
           }
         }
         break;
-      case RECEIVING:
-        for( ; i < nBytes; i++) {
+      case UART_RECEIVING:
+        while(bytesRead < nBytes && UARTMode == UART_RECEIVING) {
           c = (char)serialPort.read();
-          inputBuffer[index++] = c;
-          if(c == stopCharacter) {  // we got a packet!! //
-            //debug("got a packet!!"); inputBuffer[index] = '\0'; debug(buf);
-            index = 0;
-            mode = SYNCING;
-            return GOT_PACKET;
+          inputBuffer[bufIndex] = c;
+					bytesRead++;
+					bufIndex++;
+          if(c == stopChar) {  // we got a packet!! //
+            bufIndex = 0;
+            UARTMode = UART_SYNCING;
+            return UART_GOT_PACKET;
           }
-          if(index == MAX_INPUT_BUFFER-1) { // overflow //
-            index = 0;
-            mode = SYNCING;
-            return OVERFLOW;
+          if(bufIndex == MAX_INPUT_BUFFER-1) { // overflow //
+            bufIndex = 0;
+            UARTMode = UART_SYNCING;
+            return UART_OVERFLOW;
           } 
         }
       break;
     } // switch //
-  } // for //
-  return mode; // SYNCING OR RECEIVING
+  } // while //
+  return UARTMode; // UART_SYNCING or UART_RECEIVING
 }
 
 

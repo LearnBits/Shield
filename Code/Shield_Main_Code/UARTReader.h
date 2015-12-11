@@ -23,25 +23,25 @@
 class UARTReader
 {
   public:
-    UARTReader(Stream& serialPort, char *startDelim, char stopChar, int maxBufferSize=MAX_INPUT_BUFFER);
+    UARTReader(Stream& serialPort, char *startDelim, char stopChar, int maxBufSize=MAX_INPUT_BUFFER);
    ~UARTReader();
     int getPacket();
     char* buffer() { return inputBuffer; }
 
-    static int const GOT_PACKET = 0;
-    static int const SYNCING = 1;
-    static int const RECEIVING = 2;
-    static int const BUFF_OVERFLOW = 3;
+    static int const UART_GOT_PACKET = 0;
+    static int const UART_SYNCING = 1;
+    static int const UART_RECEIVING = 2;
+    static int const UART_BUFF_OVERFLOW = 3;
     
   private:
     char* inputBuffer;
-    char* startDelimiter; // = "json:";
-    char stopCharacter; 
+    char* startStr; // = "json:";
+    char stopChar; 
     
-    int mode  = SYNCING;
-    int index = 0; // static ptr for when data comes in separate chunks
-		int completed;
-    unsigned int stepCounter = 0;
+    int UARTMode;
+    int bufIndex; // static ptr for when data comes in separate chunks
+    int syncSteps;
+		int syncDone;
     
     Stream& serialPort;
 
