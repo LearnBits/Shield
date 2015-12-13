@@ -75,7 +75,7 @@ unsigned long MPU6050_Millis_Delay=0;
 // Json 
 const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 
-UARTReader uartReader(SerialPi, (char*)"json:", '@'); // \n
+UARTReader uartReader(SerialPi, (char*)"json:", '\n'); // \n
 
 
 ///////////////
@@ -95,13 +95,13 @@ void setup() {
 
 void loop() {
   // Get message:
-  int ret_code = uartReader.getPacket();
+  int ret_code = uartReader.getMessage();
   
   // if message complete Parse message:
-  if(ret_code == UARTReader::UART_GOT_PACKET) {
+  if(ret_code == UARTReader::GOT_PACKET) {
     Parser_MSG();
   }
-  if(ret_code == UARTReader::UART_BUFF_OVERFLOW) Serial.println("BUFF_OVERFLOW");
+  if(ret_code == UARTReader::BUFF_OVERFLOW) Serial.println("BUFF_OVERFLOW");
 
   // Read Sensors and generate message:
   Time_Millis=millis();

@@ -5,7 +5,7 @@
 UARTReader::UARTReader(Stream& serialPort, char *startStr, char stopChar, int maxBufSize) : serialPort(serialPort) {
 	this->UARTMode  = UART_SYNCING;
   this->bufIndex = 0; // static ptr for when data comes in separate chunks
-  this->syncSteps = 0;
+  this->int syncSteps = 0;
   this->startStr = new char[1 + strlen(startStr)];
   strcpy(this->startStr, startStr);
 	this->syncDone = (int)strlen(startStr);
@@ -18,7 +18,7 @@ UARTReader::~UARTReader() {
   delete this->inputBuffer;
 }
 
-int UARTReader::getPacket() {
+int UARTReader::getMessage() {
 
   int nBytes, bytesRead;
   char c;
@@ -53,6 +53,9 @@ int UARTReader::getPacket() {
 					bytesRead++;
 					bufIndex++;
           if(c == stopChar) {  // we got a packet!! //
+#ifdef DEBUGPRINT
+            Serial.write("Package");
+#endif
             bufIndex = 0;
             UARTMode = UART_SYNCING;
             return UART_GOT_PACKET;
@@ -60,7 +63,7 @@ int UARTReader::getPacket() {
           if(bufIndex == MAX_INPUT_BUFFER-1) { // overflow //
             bufIndex = 0;
             UARTMode = UART_SYNCING;
-            return UART_BUFF_OVERFLOW;
+            return UART_OVERFLOW;
           } 
         }
       break;

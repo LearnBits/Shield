@@ -25,7 +25,7 @@ class UARTReader
   public:
     UARTReader(Stream& serialPort, char *startDelim, char stopChar, int maxBufSize=MAX_INPUT_BUFFER);
    ~UARTReader();
-    int getPacket();
+    int getMessage();
     char* buffer() { return inputBuffer; }
 
     static int const UART_GOT_PACKET = 0;
