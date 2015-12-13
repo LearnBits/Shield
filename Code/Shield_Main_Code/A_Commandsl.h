@@ -15,9 +15,9 @@
 
 
 // Sensor Setup Update:
-// input:  json:{"CMD":"MPU6050","FREQ":<VAL_HZ>}\n
+// input:  json:{"CMD":"MPU6050","FREQ":<VAL_HZ>}\n // not implemented
 // input:  json:{"CMD":"MPU6050","MSEC":<Milli_Sec>}\n
-// input:  json:{"CMD":"MPU6050","FREQ":5}\n
+// input:  json:{"CMD":"MPU6050","FREQ":5}\n // not implemented
 // input:  json:{"CMD":"MPU6050","MSEC":1000}\n
 // output       {"RESP":"MPU6050","MSEC":<Milli_Sec>}\n
 
