@@ -18,7 +18,7 @@ UARTReader::~UARTReader() {
   delete this->inputBuffer;
 }
 
-int UARTReader::getPacket() {
+int UARTReader::getMessage() {
 
   int nBytes, bytesRead;
   char c;

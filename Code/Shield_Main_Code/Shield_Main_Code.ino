@@ -98,7 +98,7 @@ void loop() {
   int ret_code = uartReader.getMessage();
   
   // if message complete Parse message:
-  if(ret_code == UARTReader::GOT_PACKET) {
+  if(ret_code == UARTReader::GOT_MESSAGE) {
     Parser_MSG();
   }
   if(ret_code == UARTReader::BUFF_OVERFLOW) Serial.println("BUFF_OVERFLOW");

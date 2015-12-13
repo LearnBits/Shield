@@ -9,18 +9,11 @@
 
 HardwareSerial& Serial2RPI = Serial1;
 Serial_&        Serial2USB = Serial;
-char         msgStopChar   = '\n';
-char[]         msgStartStr = "json:";
-UARTReader uartReader(SerialPi, msgStartStr, msgStopChar);
+char           msgStopChar = '\n';
+char         msgStartStr[] = "json:";
+UARTReader uartReader(Serial2Pi, msgStartStr, msgStopChar);
 
-float period = 5;
-float A = 1.0;
-float laps = 0.0;
-float x = 0.0;
-float f = 1.3;
-char s[16];
-int pause = 0;
-int count = 0;
+
 
 void setup() {
   // initialize both serial ports:
@@ -31,7 +24,7 @@ void setup() {
 void loop() {
 
   // Get message:
-  int ret_code = uartReader.getPacket();
+  int ret_code = uartReader.getMessage();
   
   // if message complete Parse message:
   if(ret_code == UARTReader::GOT_PACKET) {
@@ -46,6 +39,17 @@ void loop() {
   x = (float)count;
   delay(150 + 50 * (random(15)-2));
 }
+
+/*
+ * float period = 5;
+float A = 1.0;
+float laps = 0.0;
+float x = 0.0;
+float f = 1.3;
+char s[16];
+int pause = 0;
+int count = 0;
+ */
 /*
 void loop() {
   

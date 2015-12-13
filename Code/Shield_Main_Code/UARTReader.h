@@ -28,7 +28,7 @@ class UARTReader
     int getMessage();
     char* buffer() { return inputBuffer; }
 
-    static int const UART_GOT_PACKET = 0;
+    static int const UART_GOT_MESSAGE = 0;
     static int const UART_SYNCING = 1;
     static int const UART_RECEIVING = 2;
     static int const UART_BUFF_OVERFLOW = 3;
