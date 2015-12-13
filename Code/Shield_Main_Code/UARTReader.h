@@ -38,17 +38,10 @@ class UARTReader
     char* startStr; // = "json:";
     char stopChar; 
     
-<<<<<<< HEAD
     int UARTMode;
     int bufIndex; // static ptr for when data comes in separate chunks
     int syncSteps;
 		int syncDone;
-=======
-    int mode  = SYNCING;
-    int index = 0; // static ptr for when data comes in separate chunks
-		unsigned int completed;
-    unsigned int stepCounter = 0;
->>>>>>> origin/master
     
     Stream& serialPort;
 
