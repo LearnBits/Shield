@@ -19,8 +19,8 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 
-HardwareSerial& SerialPi=Serial1;
-///usb_serial_class& SerialPi=Serial;
+//HardwareSerial& SerialPi=Serial1;
+usb_serial_class& SerialPi=Serial;
 
 //////////////////////////
 // fnction decleration: //
@@ -51,9 +51,9 @@ void Sample_Sensors(unsigned long TimeStamp);
 // variable to store if the device was allready initialized.
 bool Initialized_I2C[MAX_I2C_ADDR]={0};
 
-// store availble addresses
-uint8_t Num_I2C_Availble=0;
-uint8_t Availble_I2C[MAX_I2C_ADDR]={0};
+// store Available addresses
+uint8_t Num_I2C_Available=0;
+uint8_t Available_I2C[MAX_I2C_ADDR]={0};
 
 
 /////////////////
@@ -75,7 +75,7 @@ unsigned long MPU6050_Millis_Delay=0;
 // Json 
 const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 
-UARTReader uartReader(SerialPi, (char*)"json:", '\n'); // \n
+UARTReader uartReader(SerialPi, (char*)"json:", '\n'); // \n //
 
 
 ///////////////
@@ -169,8 +169,8 @@ void Parser_MSG(){
         JsonObject& jsonResp = outputJsonBuffer.createObject();
         jsonResp["RESP"] = "I2C";
         JsonArray& ADDR_I2C_Data = jsonResp.createNestedArray("ADDR");
-        for (int ii=0; ii<Num_I2C_Availble; ii++){
-          ADDR_I2C_Data.add(Availble_I2C[ii]);
+        for (int ii=0; ii<Num_I2C_Available; ii++){
+          ADDR_I2C_Data.add(Available_I2C[ii]);
         }
         jsonResp.printTo(SerialPi);
         SerialPi.println(); // must end with a '\n'
@@ -192,13 +192,13 @@ void Parser_MSG(){
 // Scan I2C bus
 void Scan_I2C(){
   uint8_t target; // slave addr
-  Num_I2C_Availble=0;
+  Num_I2C_Available=0;
   for(target = 1; target <= MAX_I2C_ADDR; target++){ // sweep addr, skip general call
       Wire.beginTransmission(target);       // slave addr
       int error_status=Wire.endTransmission();               // no data, just addr
-      if (error_status==0){      // address availble
-        Availble_I2C[Num_I2C_Availble]=target; // update availble I2C ADDR
-        Num_I2C_Availble++;
+      if (error_status==0){      // address Available
+        Available_I2C[Num_I2C_Available]=target; // update Available I2C ADDR
+        Num_I2C_Available++;
         if (Initialized_I2C[target]==0){ // if device wasn`t initialized, initialize device.
           Init_I2C(target);
         }
