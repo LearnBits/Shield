@@ -164,7 +164,7 @@ void Parser_MSG(){
       }
 
       
-      if (CMD_Type=="DISC"){
+      if (CMD_Type=="SCAN"){
         Scan_I2C();
         // generate a response
         JsonObject& jsonResp = outputJsonBuffer.createObject();

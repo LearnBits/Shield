@@ -63,7 +63,7 @@ int UARTReader::getMessage() {
           if(bufIndex == MAX_INPUT_BUFFER-1) { // overflow //
             bufIndex = 0;
             UARTMode = UART_SYNCING;
-            return UART_OVERFLOW;
+            return UART_BUFF_OVERFLOW;
           } 
         }
       break;
