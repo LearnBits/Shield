@@ -14,7 +14,7 @@ HardwareSerial& Serial2RPI = Serial1;
 
 char           msgStopChar = '\n';
 char         msgStartStr[] = "json:";
-UARTReader uartReader(Serial2RPI, msgStartStr, msgStopChar);
+UARTReader uartReader(Serial2USB, msgStartStr, msgStopChar);
 
 boolean sampleMPU6050 = false;
 WaveBurstGenerator* MPU6050gen[6];
@@ -63,6 +63,7 @@ void loop() {
   
   switch(ret_code) {
     case UARTReader::UART_GOT_MESSAGE:
+      Serial2USB.println("GOT_MESSAGE");
       parseMessage();
       break;
     case UARTReader::UART_BUFF_OVERFLOW:
@@ -70,7 +71,7 @@ void loop() {
       break;
   }
   
-  now = millis();
+  unsigned long now = millis();
 
   if(sampleMPU6050)
     getValuesMPU6050(now);
@@ -81,36 +82,24 @@ void getValuesMPU6050(unsigned long now) {
   StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
     
   if(MPU6050NextTick > now)
-    // not the time
+    // It's not the time
+        // NOTE: in case of overflow in MPU6050NextTic,
+        // this condition will be true during MPU6050Period ms,
+        // until now will overflow as well
     return;
 
   // update next tick 
   MPU6050NextTick = now + MPU6050Period;
 
-  int16_t MPU6050_VAL[6]={0,0,0,0,0,0};
-  generateValues6(MPU6050_VAL);
   // generate a message
-  JsonObject& jsonResp1 = outputJsonBuffer.createObject();
-  jsonResp1["SENSOR"] = "MPU6050_ACCELEROMETER";
-  JsonArray& arr1 = jsonResp1.createNestedArray("VAL");
-  arr1.add(MPU6050_VAL[0]);
-  arr1.add(MPU6050_VAL[1]);
-  arr1.add(MPU6050_VAL[2]);
-  sendMessage(jsonResp1);
-  
-  JsonObject& jsonResp2 = outputJsonBuffer.createObject();
-  jsonResp2["SENSOR"] = "MPU6050_GYROSCOPE";
-  JsonArray& arr2 = jsonResp2.createNestedArray("VAL");
-  arr2.add(MPU6050_VAL[3]);
-  arr2.add(MPU6050_VAL[4]);
-  arr2.add(MPU6050_VAL[5]);
-  sendMessage(jsonResp2);
+  JsonObject& jsonResp = outputJsonBuffer.createObject();
+  jsonResp["SENSOR"] = "MPU6050";
+  JsonArray& jsonArr = jsonResp.createNestedArray("VAL");
+  for(int i = 0 ; i < 6 ; i++)
+    jsonArr.add(MPU6050gen[i]->next());
+  sendMessage(jsonResp);
 }
 
-void generateValues6(int16_t val[]) {
-  for(int i = 0 ; i < 6 ; i++)
-    val[i] = nextSample(i+1);
-}
 
 void sendMessage(JsonObject& jsonResp) {
   jsonResp.printTo(Serial2RPI);

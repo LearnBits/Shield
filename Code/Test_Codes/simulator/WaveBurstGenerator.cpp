@@ -1,3 +1,6 @@
+#include "WaveBurstGenerator.h"
+
+
 long WaveBurstGenerator::next() {
   x += 1;
   dx += 1;
