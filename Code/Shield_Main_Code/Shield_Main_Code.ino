@@ -18,6 +18,7 @@
 // Sensors Libraries:
 #include "I2Cdev.h"
 #include "MPU6050.h"
+#include <SFE_BMP180.h>
 
 //HardwareSerial& SerialPi=Serial1;
 usb_serial_class& SerialPi=Serial;
@@ -47,6 +48,7 @@ void Sample_Sensors(unsigned long TimeStamp);
 #define MAX_I2C_ADDR 0x7F
 // I2C Devices ADDR:
 #define MPU6050_ADDR 0x68
+#define BMP180_ADDR 0x77
 
 // variable to store if the device was allready initialized.
 bool Initialized_I2C[MAX_I2C_ADDR]={0};
@@ -68,6 +70,17 @@ MPU6050 MPU6050_SENS;
 int16_t MPU6050_VAL[6]={0,0,0,0,0,0};
 unsigned long MPU6050_Millis=0;
 unsigned long MPU6050_Millis_Delay=0;
+
+// Barometer sensor BMP180
+SFE_BMP180 BMP180_SENS;
+unsigned long BMP180_Millis=0;
+unsigned long BMP180_Sample_Delay=0; // sample delay of BMP180 afte get sample request
+unsigned long BMP180_Millis_Delay=0;
+double BMP180_Temperature=0;
+double BMP180_Pressure=0;
+boolean BMP180_GetSample_Pressure=0; // flag to get sample after sample request
+boolean BMP180_GetSample_Temperature=0; // flag to get sample after sample request
+
 
 ////////////////////////////
 // communication variable //
@@ -186,6 +199,16 @@ void Parser_MSG(){
         SerialPi.println(); // must end with a '\n'
       }
 
+      if (CMD_Type=="BMP180"){
+        BMP180_Millis_Delay=(unsigned long)json["MSEC"];
+        if ((BMP180_Millis_Delay<10)&&(BMP180_Millis_Delay!=0)) BMP180_Millis_Delay=10; // Max sample frequency 100 Hz
+        // generate a response
+        JsonObject& jsonResp = outputJsonBuffer.createObject();
+        jsonResp["RESP"] = "BMP180";
+        jsonResp["MSEC"] = BMP180_Millis_Delay;
+        jsonResp.printTo(SerialPi);
+        SerialPi.println(); // must end with a '\n'
+      }
     }// end json parse
 }
 
@@ -215,20 +238,30 @@ void Init_I2C(uint8_t I2C_ADDR){
     Serial.print(I2C_ADDR,HEX);
     Serial.print("\r\n");
   #endif   
+  int Connection_Error_Status=0;
   // check which device it is:
   switch (I2C_ADDR){
     case MPU6050_ADDR:
       // initialize device
       MPU6050_SENS.initialize();
+      Connection_Error_Status=MPU6050_SENS.testConnection();
       #ifdef DEBUGPRINT
         // verify connection
         Serial.println("Testing device connections...");
-        Serial.println(MPU6050_SENS.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
+        Serial.println(Connection_Error_Status ? "MPU6050 connection successful" : "MPU6050 connection failed");
       #endif
-      Initialized_I2C[I2C_ADDR]=1; // initialization success,
+      if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
       break;
     
-    case 1:
+    case BMP180_ADDR:
+      // initialize device
+      Connection_Error_Status=BMP180_SENS.begin(); // returns if initialization was succesful
+      #ifdef DEBUGPRINT
+        // verify connection
+        Serial.println("Testing device connections...");
+        Serial.println(Connection_Error_Status ? "BMP180 connection successful" : "BMP180 connection failed");
+      #endif
+      if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
       break;
     
     default:  // No Such Device:,
@@ -244,10 +277,8 @@ void Init_I2C(uint8_t I2C_ADDR){
 
 // Update Sensor Values
 void Sample_Sensors(unsigned long TimeStamp){
- // MPU6050:
- StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
-    
-  if (MPU6050_Millis_Delay>0){
+  //sample MPU6050 
+  if (MPU6050_Millis_Delay>0){   
     if (Initialized_I2C[MPU6050_ADDR]){
       if (((TimeStamp-MPU6050_Millis)>MPU6050_Millis_Delay)||(MPU6050_Millis>Time_Millis)){
         MPU6050_Millis=TimeStamp;
@@ -265,6 +296,7 @@ void Sample_Sensors(unsigned long TimeStamp){
             Serial.print(MPU6050_VAL[5]); Serial.print("\t");
             Serial.println(TimeStamp);
           #endif
+          StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer
           // generate a message
           JsonObject& jsonResp = outputJsonBuffer.createObject();
           jsonResp["SENSOR"] = "MPU6050";
@@ -277,8 +309,7 @@ void Sample_Sensors(unsigned long TimeStamp){
           MPU6050_Data.add(MPU6050_VAL[5]);
           jsonResp.printTo(SerialPi);
           SerialPi.println(); // must end with a '\n'
-
-         
+          
         }else{ // sensor was disconnected:
           #ifdef DEBUGPRINT
             Serial.println("Sensor was disconnected");
@@ -296,8 +327,73 @@ void Sample_Sensors(unsigned long TimeStamp){
         Serial.print("\r\n");
       #endif 
     }
-  } 
-}
+  }
+
+  //sample BMP180
+  if (BMP180_Millis_Delay>0){
+    StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
+    if (Initialized_I2C[BMP180_ADDR]){
+      /// get sample // overflow isn`t handled properly yet
+        if (((TimeStamp-BMP180_Millis)>(BMP180_Millis_Delay+BMP180_Sample_Delay))||(BMP180_Millis>Time_Millis)){ // get sample
+          // Test connection:
+          Wire.beginTransmission(BMP180_ADDR);
+          if (Wire.endTransmission()==0){ // connection succes
+            if (BMP180_GetSample_Temperature){
+              BMP180_SENS.getTemperature(BMP180_Temperature);
+              BMP180_GetSample_Temperature=0;
+              BMP180_Sample_Delay+=BMP180_SENS.startPressure(0);
+              BMP180_GetSample_Pressure=1;
+            }else if (BMP180_GetSample_Pressure){
+              BMP180_SENS.getPressure(BMP180_Pressure,BMP180_Temperature);
+              BMP180_GetSample_Pressure=0;
+              BMP180_Millis=TimeStamp-BMP180_Sample_Delay; // update time stamp only after temperature and pressure were sampled
+              BMP180_Sample_Delay=0; // reset delay;
+              // send json with new data
+              #ifdef DEBUGPRINT
+                Serial.print("T,P:\t");
+                Serial.print(BMP180_Temperature); Serial.print("\t");
+                Serial.print(BMP180_Pressure); Serial.print("\t");
+                Serial.println(TimeStamp);
+              #endif
+              StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer 
+              // generate a message
+              JsonObject& jsonResp = outputJsonBuffer.createObject();
+              jsonResp["SENSOR"] = "BMP180";
+              JsonArray& BMP180_Data = jsonResp.createNestedArray("VAL");
+              BMP180_Data.add(BMP180_Temperature);
+              BMP180_Data.add(BMP180_Pressure);
+              jsonResp.printTo(SerialPi);
+              SerialPi.println(); // must end with a '\n'
+              
+            }else{ // get new sample, start with temperature sample
+              BMP180_Sample_Delay=BMP180_SENS.startTemperature();
+              BMP180_GetSample_Temperature=1;
+            }
+          }else{ // sensor was disconnected:
+            #ifdef DEBUGPRINT
+              Serial.println("Sensor was disconnected");
+            #endif 
+              Initialized_I2C[BMP180_ADDR]=0;
+              BMP180_Millis_Delay=0;
+              BMP180_GetSample_Temperature=0;
+              BMP180_GetSample_Pressure=0;
+              BMP180_Sample_Delay=0; 
+          }
+        }
+    }else{
+      BMP180_Millis_Delay=0;
+      BMP180_GetSample_Temperature=0;
+      BMP180_GetSample_Pressure=0;
+      BMP180_Sample_Delay=0; 
+      #ifdef DEBUGPRINT
+        Serial.print("Device Not Initialized:  ");
+        Serial.print("Addr 0x");
+        Serial.print(MPU6050_ADDR,HEX);
+        Serial.print("\r\n");
+      #endif 
+    }
+  }  
+}// end Sample_Sensors
 
 
 

@@ -21,4 +21,13 @@
 // input:  json:{"CMD":"MPU6050","MSEC":1000}\n
 // output       {"RESP":"MPU6050","MSEC":<Milli_Sec>}\n
 
-// output       {"SENSOR":"MPU6050","VAL":[<val>,<val>,<val>,<val>,<val>,<val>]\n
+// output       {"SENSOR":"MPU6050","VAL":[<Ax>,<Ay>,<Az>,<Gx>,<Gy>,<Gz>]\n
+
+// Sensor Setup Update:
+// input:  json:{"CMD":"BMP180","FREQ":<VAL_HZ>}\n
+// input:  json:{"CMD":"BMP180","MSEC":<Milli_Sec>}\n
+// input:  json:{"CMD":"BMP180","FREQ":5}\n
+// input:  json:{"CMD":"BMP180","MSEC":1000}\n
+// output       {"RESP":"BMP180","MSEC":<Milli_Sec>}\n
+
+// output       {"SENSOR":"BMP180","VAL":[<Temperature>,<Pressure>]\n
