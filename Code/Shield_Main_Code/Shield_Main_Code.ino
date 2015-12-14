@@ -67,7 +67,6 @@ unsigned long Time_Millis=0;
 
 // MPU6050 Sensor variables
 MPU6050 MPU6050_SENS;
-int16_t MPU6050_VAL[6]={0,0,0,0,0,0};
 unsigned long MPU6050_Millis=0;
 unsigned long MPU6050_Millis_Delay=0;
 
@@ -76,11 +75,6 @@ SFE_BMP180 BMP180_SENS;
 unsigned long BMP180_Millis=0;
 unsigned long BMP180_Sample_Delay=0; // sample delay of BMP180 afte get sample request
 unsigned long BMP180_Millis_Delay=0;
-double BMP180_Temperature=0;
-double BMP180_Pressure=0;
-boolean BMP180_GetSample_Pressure=0; // flag to get sample after sample request
-boolean BMP180_GetSample_Temperature=0; // flag to get sample after sample request
-
 
 ////////////////////////////
 // communication variable //
@@ -277,6 +271,7 @@ void Init_I2C(uint8_t I2C_ADDR){
 
 // Update Sensor Values
 void Sample_Sensors(unsigned long TimeStamp){
+    
   //sample MPU6050 
   if (MPU6050_Millis_Delay>0){   
     if (Initialized_I2C[MPU6050_ADDR]){
@@ -285,6 +280,7 @@ void Sample_Sensors(unsigned long TimeStamp){
         // Test connection:
         if (MPU6050_SENS.testConnection()){
           // Sample MPU6050 and send Message with data:
+          int16_t MPU6050_VAL[6]={0,0,0,0,0,0};
           MPU6050_SENS.getMotion6(&MPU6050_VAL[0], &MPU6050_VAL[1], &MPU6050_VAL[2], &MPU6050_VAL[3], &MPU6050_VAL[4], &MPU6050_VAL[5]); 
           #ifdef DEBUGPRINT
             Serial.print("a/g:\t");
@@ -331,7 +327,10 @@ void Sample_Sensors(unsigned long TimeStamp){
 
   //sample BMP180
   if (BMP180_Millis_Delay>0){
-    StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
+    static double BMP180_Temperature=0;
+    static double BMP180_Pressure=0;
+    static boolean BMP180_GetSample_Pressure=0; // flag to get sample after sample request
+    static boolean BMP180_GetSample_Temperature=0; // flag to get sample after sample request
     if (Initialized_I2C[BMP180_ADDR]){
       /// get sample // overflow isn`t handled properly yet
         if (((TimeStamp-BMP180_Millis)>(BMP180_Millis_Delay+BMP180_Sample_Delay))||(BMP180_Millis>Time_Millis)){ // get sample
