@@ -1,6 +1,6 @@
 #include "UARTReader.h"
 
-#define DEBUGPRINT
+//#define DEBUGPRINT
 
 UARTReader::UARTReader(Stream& serialPort, char *startStr, char stopChar, int maxBufSize) : serialPort(serialPort) {
 	this->UARTMode  = UART_SYNCING;

@@ -11,10 +11,17 @@
 
 Serial_&        Serial2USB = Serial;
 HardwareSerial& Serial2RPI = Serial1;
+//Stream& inSerial  = Serial2RPI;
+//Stream& outSerial = Serial2RPI;
+//Stream& errSerial = Serial2RPI;
+Stream& inSerial  = Serial2USB;
+Stream& outSerial = Serial2USB;
+Stream& errSerial = Serial2USB;
+
 
 char           msgStopChar = '\n';
 char         msgStartStr[] = "json:";
-UARTReader uartReader(Serial2USB, msgStartStr, msgStopChar);
+UARTReader uartReader(inSerial, msgStartStr, msgStopChar);
 
 boolean sampleMPU6050 = false;
 WaveBurstGenerator* MPU6050gen[6];
@@ -26,6 +33,7 @@ const int JSON_BUFFER_SIZE = JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(16);
 int16_t MPU6050_VAL[6]={0,0,0,0,0,0};
 unsigned long MPU6050NextTick = 0;
 unsigned long MPU6050Period = 0;
+unsigned long MPU6050Count = 0;
 // LED BAR
 #define NUMPIXELS      8
 
@@ -63,11 +71,10 @@ void loop() {
   
   switch(ret_code) {
     case UARTReader::UART_GOT_MESSAGE:
-      Serial2USB.println("GOT_MESSAGE");
       parseMessage();
       break;
     case UARTReader::UART_BUFF_OVERFLOW:
-      Serial2USB.println("UART_BUFF_OVERFLOW");
+      errSerial.println("UART_BUFF_OVERFLOW");
       break;
   }
   
@@ -92,18 +99,25 @@ void getValuesMPU6050(unsigned long now) {
   MPU6050NextTick = now + MPU6050Period;
 
   // generate a message
-  JsonObject& jsonResp = outputJsonBuffer.createObject();
-  jsonResp["SENSOR"] = "MPU6050";
-  JsonArray& jsonArr = jsonResp.createNestedArray("VAL");
+  JsonObject& resp = outputJsonBuffer.createObject();
+  resp["SENSOR_ID"] = "MPU6050";
+  resp["COUNT"] = MPU6050Count++;
+  JsonArray& jsonArr = resp.createNestedArray("VALUES");
   for(int i = 0 ; i < 6 ; i++)
     jsonArr.add(MPU6050gen[i]->next());
-  sendMessage(jsonResp);
+  sendMessage(resp);
 }
 
 
-void sendMessage(JsonObject& jsonResp) {
-  jsonResp.printTo(Serial2RPI);
-  Serial2RPI.println(); // must end with a '\n'
+void sendMessage(JsonObject& resp) {
+  resp.printTo(outSerial);
+  outSerial.println(); // must end with a '\n'
+}
+
+void ack(JsonObject& req, JsonObject& resp) {
+  resp["RESP"] = req["CMD"];
+  resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
+  sendMessage(resp);
 }
 
 void parseMessage(){
@@ -112,68 +126,60 @@ void parseMessage(){
     StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;
   
     // Parse cmd
-    JsonObject& json = inputJsonBuffer.parseObject(uartReader.buffer());
+    JsonObject& req = inputJsonBuffer.parseObject(uartReader.buffer());
     // Create Response object
-    JsonObject& jsonResp = outputJsonBuffer.createObject();
+    JsonObject& resp = outputJsonBuffer.createObject();
 
-    if(json.success()) {
-      String CMD_Type=json["CMD"];
+    if(req.success()) {
+      String CMD_Type=req["CMD"];
+
+      if(CMD_Type=="RESET") {
+        sampleMPU6050 = false;
+        // generate a response
+        ack(req, resp);
+      }
       
       if (CMD_Type=="MOTOR"){
-        int Motor_Left_Val=json["MOVE"][0];
-        int Motor_Right_Val=json["MOVE"][1];
+        int Motor_Left_Val=req["MOVE"][0];
+        int Motor_Right_Val=req["MOVE"][1];
         // send command to motors
         //move(0, Motor_Left_Val);
         //move(1, Motor_Left_Val);
 
         // generate a response
-        jsonResp["RESP"] = "MOTOR";
-        JsonArray& Move_Data = jsonResp.createNestedArray("MOVE");
-        Move_Data.add(Motor_Left_Val);
-        Move_Data.add(Motor_Right_Val);
-        sendMessage(jsonResp);
+        ack(req, resp);
       }
       
       if (CMD_Type=="LED"){
         //for (int ii=0; ii<NUMPIXELS; ii++){
-        //  int RGB_Table_Index=json["SET"][ii];
+        //  int RGB_Table_Index=req["SET"][ii];
         //  if ((RGB_Table_Index>=0)&&(RGB_Table_Index<RGB_TABLE_SIZE))
         //    pixels.setPixelColor(ii,RGB_TABLE[RGB_Table_Index]); // Set pixel color. 
         //}
         //pixels.show(); // Updated pixel color Hardware.
 
         // generate a response
-        jsonResp["RESP"] = "LED";
-        JsonArray& Color_Data = jsonResp.createNestedArray("COLOR");
-        for (int ii=0; ii<NUMPIXELS; ii++){
-          //uint32_t Color_Hex=pixels.getPixelColor(ii);
-          Color_Data.add(json["SET"][ii]);
-        }
-        sendMessage(jsonResp);
+        ack(req, resp);
       }
 
       if (CMD_Type=="SCAN"){
         //Scan_I2C();
         // generate a response
-        jsonResp["RESP"] = "I2C";
-        JsonArray& ADDR_I2C_Data = jsonResp.createNestedArray("ADDR");
+        JsonArray& ADDR_I2C_Data = resp.createNestedArray("I2C_ADDR");
         //for (int ii=0; ii<Num_I2C_Availble; ii++){
         //  ADDR_I2C_Data.add(Availble_I2C[ii]);
         //}
         ADDR_I2C_Data.add(MPU6050_ADDR); // Add the MPU to the 
-        sendMessage(jsonResp);
+        ack(req, resp);
       }
 
      if (CMD_Type=="MPU6050"){
-        MPU6050Period = (unsigned long)json["MSEC"];
+        MPU6050Period = (unsigned long)req["MSEC"];
         sampleMPU6050 = (MPU6050Period > 0);
         if(sampleMPU6050 && MPU6050Period < 100) 
           MPU6050Period = 100;
         // generate a response
-
-        jsonResp["RESP"] = "MPU6050";
-        jsonResp["MSEC"] = MPU6050Period;
-        sendMessage(jsonResp);
+        ack(req, resp);
       }
 
     }// end json parse
