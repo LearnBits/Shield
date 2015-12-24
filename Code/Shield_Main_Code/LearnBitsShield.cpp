@@ -63,7 +63,7 @@ void Init_LearnBitsShield(){
 
 // Motors Functions
 //Move specific motor at speed and direction
-void move(int motor, int speed){
+void Motor_move(int motor, int speed){
 //motor: 0 for B 1 for A
 //speed: 0 is off, and 255 is full speed
 //direction: 0 clockwise, 1 counter-clockwise
@@ -97,7 +97,7 @@ void move(int motor, int speed){
 }
 
 // Stop Motors
-void stop(){
+void Motor_stop(){
 //enable standby  
   digitalWrite(MOT_STBY, LOW); 
 }

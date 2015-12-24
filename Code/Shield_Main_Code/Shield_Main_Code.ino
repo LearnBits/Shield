@@ -20,8 +20,8 @@
 #include "MPU6050.h"
 #include <SFE_BMP180.h>
 
-//HardwareSerial& SerialPi=Serial1;
-usb_serial_class& SerialPi=Serial;
+HardwareSerial& SerialPi=Serial1;
+//usb_serial_class& SerialPi=Serial;
 
 //////////////////////////
 // fnction decleration: //
@@ -42,6 +42,8 @@ void Sample_Sensors(unsigned long TimeStamp);
 // Sum up message and send
 void SendResponse(JsonObject& req, JsonObject& resp);
 
+//Reset Sensors
+void Resset_Sensors();
 ///////////////
 // Variables //
 ///////////////
@@ -145,8 +147,8 @@ void Parser_MSG(){
         int Motor_Left_Val=json["MOVE"][0];
         int Motor_Right_Val=json["MOVE"][1];
         // send command to motors
-        move(0, Motor_Left_Val);
-        move(1, Motor_Right_Val);
+        Motor_move(0, Motor_Left_Val);
+        Motor_move(1, Motor_Right_Val);
       }
       
       if (CMD_Type=="LED"){
@@ -165,6 +167,10 @@ void Parser_MSG(){
         for (int ii=0; ii<Num_I2C_Available; ii++){
           ADDR_I2C_Data.add(Available_I2C[ii]);
         }
+      }
+
+      if (CMD_Type=="RESET"){
+        Resset_Sensors();
       }
 
      if (CMD_Type=="MPU6050"){
@@ -372,12 +378,28 @@ void Sample_Sensors(unsigned long TimeStamp){
   }  
 }// end Sample_Sensors
 
+//Reset Sensors
+void Resset_Sensors(){
+  MPU6050_Millis_Delay=0;
+  MPU6050_Count=0;
+  
+  BMP180_Millis_Delay=0;
+  BMP180_Count=0;
+
+  Motor_stop();
+
+  for(int ii=0;ii<NUMPIXELS;ii++){
+    pixels.setPixelColor(ii, pixels.Color(0,0,0)); // Set pixel color. 
+  }
+  pixels.show(); // Updated pixel color Hardware.
+} //end Reset Sensors
+
 // Sum up message and send to Raspberry pi
 void SendResponse(JsonObject& req, JsonObject& resp) {
   resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
   resp.printTo(SerialPi);
   SerialPi.println(); // must end with a '\n'
-}
+}//end SendResponse
 
 
 

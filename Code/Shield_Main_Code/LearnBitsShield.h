@@ -97,10 +97,10 @@ void Init_LearnBitsShield();
 
 // Motors Functions
 //Move specific motor at speed
-void move(int motor, int speed);
+void Motor_move(int motor, int speed);
   
 // Stop Motors
-void stop();
+void Motor_stop();
 
 
 #endif /* LEARNBITSSHIELD_H_ */
