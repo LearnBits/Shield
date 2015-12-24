@@ -72,12 +72,14 @@ unsigned long Time_Millis=0;
 MPU6050 MPU6050_SENS;
 unsigned long MPU6050_Millis=0;
 unsigned long MPU6050_Millis_Delay=0;
+uint16_t MPU6050_Count=0;
 
 // Barometer sensor BMP180
 SFE_BMP180 BMP180_SENS;
 unsigned long BMP180_Millis=0;
 unsigned long BMP180_Sample_Delay=0; // sample delay of BMP180 afte get sample request
 unsigned long BMP180_Millis_Delay=0;
+uint16_t BMP180_Count=0;
 
 ////////////////////////////
 // communication variable //
@@ -134,22 +136,17 @@ void Parser_MSG(){
     JsonObject& json = inputJsonBuffer.parseObject(uartReader.buffer());
     if(json.success()) {
       String CMD_Type=json["CMD"];
+
+      // generate response
+      JsonObject& jsonResp = outputJsonBuffer.createObject();
+      jsonResp["RESP"] = CMD_Type;
       
       if (CMD_Type=="MOTOR"){
         int Motor_Left_Val=json["MOVE"][0];
         int Motor_Right_Val=json["MOVE"][1];
         // send command to motors
         move(0, Motor_Left_Val);
-        move(1, Motor_Left_Val);
-
-        // generate a response
-        JsonObject& jsonResp = outputJsonBuffer.createObject();
-        jsonResp["RESP"] = "MOTOR";
-        JsonArray& Move_Data = jsonResp.createNestedArray("MOVE");
-        Move_Data.add(Motor_Left_Val);
-        Move_Data.add(Motor_Right_Val);
-        jsonResp.printTo(SerialPi);
-        SerialPi.println(); // must end with a '\n'
+        move(1, Motor_Right_Val);
       }
       
       if (CMD_Type=="LED"){
@@ -159,54 +156,28 @@ void Parser_MSG(){
           pixels.setPixelColor(ii,RGB_TABLE[RGB_Table_Index]); // Set pixel color. 
         }
         pixels.show(); // Updated pixel color Hardware.
-
-        // generate a response
-        JsonObject& jsonResp = outputJsonBuffer.createObject();
-        jsonResp["RESP"] = "LED";
-        JsonArray& Color_Data = jsonResp.createNestedArray("COLOR");
-        for (int ii=0; ii<NUMPIXELS; ii++){
-          uint32_t Color_Hex=pixels.getPixelColor(ii);
-          Color_Data.add(Color_Hex);
-        }
-        jsonResp.printTo(SerialPi);
-        SerialPi.println(); // must end with a '\n'
       }
-
-      
+       
       if (CMD_Type=="SCAN"){
         Scan_I2C();
-        // generate a response
-        JsonObject& jsonResp = outputJsonBuffer.createObject();
-        jsonResp["RESP"] = "I2C";
-        JsonArray& ADDR_I2C_Data = jsonResp.createNestedArray("ADDR");
+        // update response with available I2C addreses.
+        JsonArray& ADDR_I2C_Data = jsonResp.createNestedArray("I2C_ADDR");
         for (int ii=0; ii<Num_I2C_Available; ii++){
           ADDR_I2C_Data.add(Available_I2C[ii]);
         }
-        
-        jsonResp.printTo(SerialPi);
-        SerialPi.println(); // must end with a '\n'
       }
 
      if (CMD_Type=="MPU6050"){
         MPU6050_Millis_Delay=(unsigned long)json["MSEC"];
-        // generate a response
-        JsonObject& jsonResp = outputJsonBuffer.createObject();
-        jsonResp["RESP"] = "MPU6050";
-        jsonResp["MSEC"] = MPU6050_Millis_Delay;
-        jsonResp.printTo(SerialPi);
-        SerialPi.println(); // must end with a '\n'
       }
 
       if (CMD_Type=="BMP180"){
         BMP180_Millis_Delay=(unsigned long)json["MSEC"];
         if ((BMP180_Millis_Delay<10)&&(BMP180_Millis_Delay!=0)) BMP180_Millis_Delay=10; // Max sample frequency 100 Hz
-        // generate a response
-        JsonObject& jsonResp = outputJsonBuffer.createObject();
-        jsonResp["RESP"] = "BMP180";
-        jsonResp["MSEC"] = BMP180_Millis_Delay;
-        jsonResp.printTo(SerialPi);
-        SerialPi.println(); // must end with a '\n'
       }
+
+      // send response:
+      SendResponse(json,jsonResp); 
     }// end json parse
 }
 
@@ -299,7 +270,9 @@ void Sample_Sensors(unsigned long TimeStamp){
           StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer
           // generate a message
           JsonObject& jsonResp = outputJsonBuffer.createObject();
-          jsonResp["SENSOR"] = "MPU6050";
+          jsonResp["SAMPLE_ID"] = "MPU6050";
+          jsonResp["COUNT"] = MPU6050_Count++;
+          
           JsonArray& MPU6050_Data = jsonResp.createNestedArray("VAL");
           MPU6050_Data.add(MPU6050_VAL[0]);
           MPU6050_Data.add(MPU6050_VAL[1]);
@@ -361,7 +334,8 @@ void Sample_Sensors(unsigned long TimeStamp){
               StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer 
               // generate a message
               JsonObject& jsonResp = outputJsonBuffer.createObject();
-              jsonResp["SENSOR"] = "BMP180";
+              jsonResp["SAMPLE_ID"] = "BMP180";
+              jsonResp["COUNT"] = BMP180_Count++;
               JsonArray& BMP180_Data = jsonResp.createNestedArray("VAL");
               BMP180_Data.add(BMP180_Temperature);
               BMP180_Data.add(BMP180_Pressure);
@@ -400,7 +374,6 @@ void Sample_Sensors(unsigned long TimeStamp){
 
 // Sum up message and send to Raspberry pi
 void SendResponse(JsonObject& req, JsonObject& resp) {
-  resp["RESP"] = req["CMD"];
   resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
   resp.printTo(SerialPi);
   SerialPi.println(); // must end with a '\n'
