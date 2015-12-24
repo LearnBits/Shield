@@ -100,7 +100,7 @@ void getValuesMPU6050(unsigned long now) {
 
   // generate a message
   JsonObject& resp = outputJsonBuffer.createObject();
-  resp["SENSOR_ID"] = "MPU6050";
+  resp["SAMPLE_ID"] = "MPU6050";
   resp["COUNT"] = MPU6050Count++;
   JsonArray& jsonArr = resp.createNestedArray("VALUES");
   for(int i = 0 ; i < 6 ; i++)
@@ -116,7 +116,7 @@ void sendMessage(JsonObject& resp) {
 
 void ack(JsonObject& req, JsonObject& resp) {
   resp["RESP"] = req["CMD"];
-  resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
+  resp["REQ_ID"] = req.containsKey("REQ_ID") ? req["REQ_ID"] : "-1";
   sendMessage(resp);
 }
 
