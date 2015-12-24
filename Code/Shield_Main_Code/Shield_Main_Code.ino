@@ -411,13 +411,14 @@ void Sample_Sensors(unsigned long TimeStamp){
           #ifdef DEBUGPRINT
             Serial.print("Slide Potentiometer ADC \t");
             Serial.print(Slide_Potentiometer_ADC);
+            Serial.print("\t");
             Serial.println(TimeStamp);
           #endif
           StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer
           // generate a message
           JsonObject& jsonResp = outputJsonBuffer.createObject();
-          jsonResp["SAMPLE_ID"] = "MPU6050";
-          jsonResp["COUNT"] = MPU6050_Count++;
+          jsonResp["SAMPLE_ID"] = "SLIDEPOT";
+          jsonResp["COUNT"] = SLIDEPOT_Count++;
           jsonResp["VAL"] = Slide_Potentiometer_ADC;
           
           jsonResp.printTo(SerialPi);
@@ -471,7 +472,7 @@ void SendResponse(JsonObject& req, JsonObject& resp) {
 
 
 // Init I2C_ADC Device:
-boolean Init_I2C_ADC(uint8_t I2C_ADC_Address){
+boolean Init_I2C_ADC(int I2C_ADC_Address){
   Wire.beginTransmission(I2C_ADC_Address);        // transmit to device
   Wire.write(ADC_REG_ADDR_CONFIG);                // Configuration Register
   Wire.write(ADC_REG_ADDR_CONV_INT);              // set ADC convertation interval to 3.4 ksps
@@ -488,7 +489,7 @@ boolean Init_I2C_ADC(uint8_t I2C_ADC_Address){
 }//end Init_I2C_ADC
 
 //Read ADC Value
-uint16_t Read_I2C_ADC(uint8_t I2C_ADC_Address){     //unsigned int *data
+uint16_t Read_I2C_ADC(int I2C_ADC_Address){     //unsigned int *data
   
     uint16_t getData=0;
     Wire.requestFrom(I2C_ADC_Address, 2);           // request 2byte from device
