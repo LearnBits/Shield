@@ -19,6 +19,7 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include <SFE_BMP180.h>
+#include "I2C_ADC.h"
 
 HardwareSerial& SerialPi=Serial1;
 //usb_serial_class& SerialPi=Serial;
@@ -52,8 +53,9 @@ void Resset_Sensors();
 // I2C Max addresses
 #define MAX_I2C_ADDR 0x7F
 // I2C Devices ADDR:
-#define MPU6050_ADDR 0x68
-#define BMP180_ADDR 0x77
+#define SLIDEPOT_ADDR  0x50 // 80
+#define MPU6050_ADDR   0x68 // 104
+#define BMP180_ADDR    0x77 // 119
 
 // variable to store if the device was allready initialized.
 bool Initialized_I2C[MAX_I2C_ADDR]={0};
@@ -82,6 +84,11 @@ unsigned long BMP180_Millis=0;
 unsigned long BMP180_Sample_Delay=0; // sample delay of BMP180 afte get sample request
 unsigned long BMP180_Millis_Delay=0;
 uint16_t BMP180_Count=0;
+
+// Slide Potentiometer ( SLIDEPOT )
+unsigned long SLIDEPOT_Millis=0;
+unsigned long SLIDEPOT_Millis_Delay=0;
+uint16_t SLIDEPOT_Count=0;
 
 ////////////////////////////
 // communication variable //
@@ -173,7 +180,7 @@ void Parser_MSG(){
         Resset_Sensors();
       }
 
-     if (CMD_Type=="MPU6050"){
+      if (CMD_Type=="MPU6050"){
         MPU6050_Millis_Delay=(unsigned long)json["MSEC"];
       }
 
@@ -181,7 +188,9 @@ void Parser_MSG(){
         BMP180_Millis_Delay=(unsigned long)json["MSEC"];
         if ((BMP180_Millis_Delay<10)&&(BMP180_Millis_Delay!=0)) BMP180_Millis_Delay=10; // Max sample frequency 100 Hz
       }
-
+      if (CMD_Type=="SLIDEPOT"){
+        SLIDEPOT_Millis_Delay=(unsigned long)json["MSEC"];
+      }
       // send response:
       SendResponse(json,jsonResp); 
     }// end json parse
@@ -235,6 +244,17 @@ void Init_I2C(uint8_t I2C_ADDR){
         // verify connection
         Serial.println("Testing device connections...");
         Serial.println(Connection_Error_Status ? "BMP180 connection successful" : "BMP180 connection failed");
+      #endif
+      if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
+      break;
+
+    case SLIDEPOT_ADDR:
+      // initialize device
+      Connection_Error_Status=Init_I2C_ADC(SLIDEPOT_ADDR); // returns if initialization was succesful
+      #ifdef DEBUGPRINT
+        // verify connection
+        Serial.println("Testing device connections...");
+        Serial.println(Connection_Error_Status ? "SLIDEPOT connection successful" : "SLIDEPOT connection failed");
       #endif
       if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
       break;
@@ -375,7 +395,52 @@ void Sample_Sensors(unsigned long TimeStamp){
         Serial.print("\r\n");
       #endif 
     }
-  }  
+  }
+
+
+  //sample Slide Potentiometer 
+  if (SLIDEPOT_Millis_Delay>0){   
+    if (Initialized_I2C[SLIDEPOT_ADDR]){
+      if (((TimeStamp-SLIDEPOT_Millis)>SLIDEPOT_Millis_Delay)||(SLIDEPOT_Millis>Time_Millis)){
+        SLIDEPOT_Millis=TimeStamp;
+        // Test connection:
+        Wire.beginTransmission(SLIDEPOT_ADDR);
+        if (Wire.endTransmission()==0){ // connection succes
+          // Sample Slide potentiometer
+          uint16_t Slide_Potentiometer_ADC=Read_I2C_ADC(SLIDEPOT_ADDR);
+          #ifdef DEBUGPRINT
+            Serial.print("Slide Potentiometer ADC \t");
+            Serial.print(Slide_Potentiometer_ADC);
+            Serial.println(TimeStamp);
+          #endif
+          StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer
+          // generate a message
+          JsonObject& jsonResp = outputJsonBuffer.createObject();
+          jsonResp["SAMPLE_ID"] = "MPU6050";
+          jsonResp["COUNT"] = MPU6050_Count++;
+          jsonResp["VAL"] = Slide_Potentiometer_ADC;
+          
+          jsonResp.printTo(SerialPi);
+          SerialPi.println(); // must end with a '\n'
+          
+        }else{ // sensor was disconnected:
+          #ifdef DEBUGPRINT
+            Serial.println("Sensor was disconnected");
+          #endif 
+            Initialized_I2C[SLIDEPOT_ADDR]=0;
+            SLIDEPOT_Millis_Delay=0;
+        }
+      }
+    }else{
+      SLIDEPOT_Millis_Delay=0;
+      #ifdef DEBUGPRINT
+        Serial.print("Device Not Initialized:  ");
+        Serial.print("Addr 0x");
+        Serial.print(SLIDEPOT_ADDR,HEX);
+        Serial.print("\r\n");
+      #endif 
+    }
+  }    
 }// end Sample_Sensors
 
 //Reset Sensors
@@ -385,6 +450,9 @@ void Resset_Sensors(){
   
   BMP180_Millis_Delay=0;
   BMP180_Count=0;
+
+  SLIDEPOT_Millis_Delay=0;
+  SLIDEPOT_Count=0;
 
   Motor_stop();
 
@@ -396,10 +464,40 @@ void Resset_Sensors(){
 
 // Sum up message and send to Raspberry pi
 void SendResponse(JsonObject& req, JsonObject& resp) {
-  resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
+  resp["REQ_ID"] = req.containsKey("REQ_ID") ? req["REQ_ID"] : "-1";
   resp.printTo(SerialPi);
   SerialPi.println(); // must end with a '\n'
 }//end SendResponse
 
+
+// Init I2C_ADC Device:
+boolean Init_I2C_ADC(uint8_t I2C_ADC_Address){
+  Wire.beginTransmission(I2C_ADC_Address);        // transmit to device
+  Wire.write(ADC_REG_ADDR_CONFIG);                // Configuration Register
+  Wire.write(ADC_REG_ADDR_CONV_INT);              // set ADC convertation interval to 3.4 ksps
+  Wire.endTransmission();  
+
+  // get data from device.
+  Wire.beginTransmission(I2C_ADC_Address);        // transmit to device
+  Wire.write(ADC_REG_ADDR_RESULT);                // get result
+  if (Wire.endTransmission()==0){                 // connection success
+    return 1;
+  }else {
+    return 0;
+  }
+}//end Init_I2C_ADC
+
+//Read ADC Value
+uint16_t Read_I2C_ADC(uint8_t I2C_ADC_Address){     //unsigned int *data
+  
+    uint16_t getData=0;
+    Wire.requestFrom(I2C_ADC_Address, 2);           // request 2byte from device
+    if(Wire.available()<=2)
+    {
+      getData = (Wire.read()&0x0f)<<8;
+      getData |= Wire.read();
+    }
+    return getData; // range : 0-4095/2
+}// end Read_I2C_ADC
 
 

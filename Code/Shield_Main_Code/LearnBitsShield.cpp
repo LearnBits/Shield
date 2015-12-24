@@ -29,7 +29,7 @@ const uint32_t RGB_TABLE[RGB_TABLE_SIZE]={
 0x808080,0xA9A9A9,0xC0C0C0,0xD3D3D3,0xDCDCDC,0xF5F5F5,0xFFFFFF};
 
 ///////////////////////
-// Define Functions //
+// Define Functions  //
 ///////////////////////
 
 // Shield initialize function:
