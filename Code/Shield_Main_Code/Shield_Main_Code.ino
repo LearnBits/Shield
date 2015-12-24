@@ -39,6 +39,9 @@ void Init_I2C(uint8_t I2C_ADDR);
 // Update Sensor Values
 void Sample_Sensors(unsigned long TimeStamp);
 
+// Sum up message and send
+void SendResponse(JsonObject& req, JsonObject& resp);
+
 ///////////////
 // Variables //
 ///////////////
@@ -179,6 +182,7 @@ void Parser_MSG(){
         for (int ii=0; ii<Num_I2C_Available; ii++){
           ADDR_I2C_Data.add(Available_I2C[ii]);
         }
+        
         jsonResp.printTo(SerialPi);
         SerialPi.println(); // must end with a '\n'
       }
@@ -393,6 +397,14 @@ void Sample_Sensors(unsigned long TimeStamp){
     }
   }  
 }// end Sample_Sensors
+
+// Sum up message and send to Raspberry pi
+void SendResponse(JsonObject& req, JsonObject& resp) {
+  resp["RESP"] = req["CMD"];
+  resp["ID"] = req.containsKey("ID") ? req["ID"] : "-1";
+  resp.printTo(SerialPi);
+  SerialPi.println(); // must end with a '\n'
+}
 
 
 
