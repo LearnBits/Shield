@@ -437,8 +437,9 @@ void Sample_Sensors(unsigned long TimeStamp){
           JsonObject& jsonResp = outputJsonBuffer.createObject();
           jsonResp["SAMPLE_ID"] = "SLIDEPOT";
           jsonResp["COUNT"] = SLIDEPOT_Count++;
-          jsonResp["VAL"] = Slide_Potentiometer_ADC;
-          
+          //jsonResp["VAL"] = Slide_Potentiometer_ADC;
+          JsonArray& SLIDEPOT_Data = jsonResp.createNestedArray("VAL");
+          SLIDEPOT_Data.add(Slide_Potentiometer_ADC);
           jsonResp.printTo(SerialPi);
           SerialPi.println(); // must end with a '\n'
           
@@ -483,8 +484,9 @@ void Sample_Sensors(unsigned long TimeStamp){
           JsonObject& jsonResp = outputJsonBuffer.createObject();
           jsonResp["SAMPLE_ID"] = "TSL2561";
           jsonResp["COUNT"] = TSL2561_Count++;
-          jsonResp["VAL"] = TSL2561_Lux;
-          
+          //jsonResp["VAL"] = TSL2561_Lux;
+          JsonArray& TSL2561_Data = jsonResp.createNestedArray("VAL");
+          TSL2561_Data.add(TSL2561_Lux);
           jsonResp.printTo(SerialPi);
           SerialPi.println(); // must end with a '\n'
           
