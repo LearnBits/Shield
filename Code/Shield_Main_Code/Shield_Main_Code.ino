@@ -20,6 +20,11 @@
 #include "MPU6050.h"
 #include <SFE_BMP180.h>
 #include "I2C_ADC.h"
+#include <Digital_Light_TSL2561.h>
+
+///////////////////////////////////////////////////////////////////////////
+// Communication Object with PI /  PC :  //////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 
 HardwareSerial& SerialPi=Serial1;
 //usb_serial_class& SerialPi=Serial;
@@ -53,9 +58,10 @@ void Resset_Sensors();
 // I2C Max addresses
 #define MAX_I2C_ADDR 0x7F
 // I2C Devices ADDR:
-#define SLIDEPOT_ADDR  0x50 // 80
-#define MPU6050_ADDR   0x68 // 104
-#define BMP180_ADDR    0x77 // 119
+#define TSL2561_ADDR      0x29 // 41
+#define SLIDEPOT_ADDR     0x50 // 80
+#define MPU6050_ADDR      0x68 // 104
+#define BMP180_ADDR       0x77 // 119
 
 // variable to store if the device was allready initialized.
 bool Initialized_I2C[MAX_I2C_ADDR]={0};
@@ -89,6 +95,11 @@ uint16_t BMP180_Count=0;
 unsigned long SLIDEPOT_Millis=0;
 unsigned long SLIDEPOT_Millis_Delay=0;
 uint16_t SLIDEPOT_Count=0;
+
+// Digital Light Sensor  TSL2561 (TSL2561_SENS)
+unsigned long TSL2561_Millis=0;
+unsigned long TSL2561_Millis_Delay=0;
+uint16_t TSL2561_Count=0;
 
 ////////////////////////////
 // communication variable //
@@ -156,40 +167,31 @@ void Parser_MSG(){
         // send command to motors
         Motor_move(0, Motor_Left_Val);
         Motor_move(1, Motor_Right_Val);
-      }
-      
-      if (CMD_Type=="LED"){
+      }else if (CMD_Type=="LED"){
         for (int ii=0; ii<NUMPIXELS; ii++){
           int RGB_Table_Index=json["SET"][ii];
           if ((RGB_Table_Index>=0)&&(RGB_Table_Index<RGB_TABLE_SIZE))
           pixels.setPixelColor(ii,RGB_TABLE[RGB_Table_Index]); // Set pixel color. 
         }
         pixels.show(); // Updated pixel color Hardware.
-      }
-       
-      if (CMD_Type=="SCAN"){
+      }else if (CMD_Type=="SCAN"){
         Scan_I2C();
         // update response with available I2C addreses.
         JsonArray& ADDR_I2C_Data = jsonResp.createNestedArray("I2C_ADDR");
         for (int ii=0; ii<Num_I2C_Available; ii++){
           ADDR_I2C_Data.add(Available_I2C[ii]);
         }
-      }
-
-      if (CMD_Type=="RESET"){
+      }else if (CMD_Type=="RESET"){
         Resset_Sensors();
-      }
-
-      if (CMD_Type=="MPU6050"){
+      }else if (CMD_Type=="MPU6050"){
         MPU6050_Millis_Delay=(unsigned long)json["MSEC"];
-      }
-
-      if (CMD_Type=="BMP180"){
+      }else if (CMD_Type=="BMP180"){
         BMP180_Millis_Delay=(unsigned long)json["MSEC"];
         if ((BMP180_Millis_Delay<10)&&(BMP180_Millis_Delay!=0)) BMP180_Millis_Delay=10; // Max sample frequency 100 Hz
-      }
-      if (CMD_Type=="SLIDEPOT"){
+      }else if (CMD_Type=="SLIDEPOT"){
         SLIDEPOT_Millis_Delay=(unsigned long)json["MSEC"];
+      }else if (CMD_Type=="TSL2561"){
+        TSL2561_Millis_Delay=(unsigned long)json["MSEC"];
       }
       // send response:
       SendResponse(json,jsonResp); 
@@ -258,7 +260,20 @@ void Init_I2C(uint8_t I2C_ADDR){
       #endif
       if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
       break;
-    
+
+    case TSL2561_ADDR:
+      // initialize device
+      Wire.beginTransmission(TSL2561_ADDR);
+      Connection_Error_Status=!Wire.endTransmission();
+      if (Connection_Error_Status) TSL2561.init();
+      #ifdef DEBUGPRINT
+        // verify connection
+        Serial.println("Testing device connections...");
+        Serial.println(Connection_Error_Status ? "TSL2561 connection successful" : "TSL2561 connection failed");
+      #endif
+      if (Connection_Error_Status) Initialized_I2C[I2C_ADDR]=1; // initialization success,
+      break;
+      
     default:  // No Such Device:,
       Initialized_I2C[I2C_ADDR]=0;
       #ifdef DEBUGPRINT
@@ -441,7 +456,54 @@ void Sample_Sensors(unsigned long TimeStamp){
         Serial.print("\r\n");
       #endif 
     }
-  }    
+  }
+
+
+  //sample TSL2561 Digital Light sensor 
+  if (TSL2561_Millis_Delay>0){   
+    if (Initialized_I2C[TSL2561_ADDR]){
+      if (((TimeStamp-TSL2561_Millis)>TSL2561_Millis_Delay)||(TSL2561_Millis>Time_Millis)){
+        TSL2561_Millis=TimeStamp;
+        // Test connection:
+        Wire.beginTransmission(TSL2561_ADDR);
+        if (Wire.endTransmission()==0){ // connection succes
+          // Sample Digital Light sensor TSL2561
+          long TSL2561_Lux=TSL2561.readVisibleLux();
+          #ifdef DEBUGPRINT
+            Serial.print("TSL2561 Light Sensor LUX \t");
+            Serial.print(TSL2561_Lux);
+            Serial.print("\t");
+            Serial.println(TimeStamp);
+          #endif
+          StaticJsonBuffer<JSON_BUFFER_SIZE> outputJsonBuffer;  // generate json  buffer
+          // generate a message
+          JsonObject& jsonResp = outputJsonBuffer.createObject();
+          jsonResp["SAMPLE_ID"] = "TSL2561";
+          jsonResp["COUNT"] = TSL2561_Count++;
+          jsonResp["VAL"] = TSL2561_Lux;
+          
+          jsonResp.printTo(SerialPi);
+          SerialPi.println(); // must end with a '\n'
+          
+        }else{ // sensor was disconnected:
+          #ifdef DEBUGPRINT
+            Serial.println("Sensor was disconnected");
+          #endif 
+            Initialized_I2C[TSL2561_ADDR]=0;
+            TSL2561_Millis_Delay=0;
+        }
+      }
+    }else{
+      TSL2561_Millis_Delay=0;
+      #ifdef DEBUGPRINT
+        Serial.print("Device Not Initialized:  ");
+        Serial.print("Addr 0x");
+        Serial.print(TSL2561_ADDR,HEX);
+        Serial.print("\r\n");
+      #endif 
+    }
+  }
+      
 }// end Sample_Sensors
 
 //Reset Sensors
@@ -455,6 +517,9 @@ void Resset_Sensors(){
   SLIDEPOT_Millis_Delay=0;
   SLIDEPOT_Count=0;
 
+  TSL2561_Millis_Delay=0;
+  TSL2561_Count=0;
+  
   Motor_stop();
 
   for(int ii=0;ii<NUMPIXELS;ii++){

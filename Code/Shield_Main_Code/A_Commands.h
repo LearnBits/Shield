@@ -1,5 +1,6 @@
 //I2C Addresses:
 //// I2C Devices ADDR:
+//#define TSL2561_ADDR   0x29 // 41
 //#define SlidePot_ADDR  0x50 // 80
 //#define MPU6050_ADDR   0x68 // 104
 //#define BMP180_ADDR    0x77 // 119
@@ -60,3 +61,15 @@
 
 // sensor stream update
 // output       {"SENSOR":"SLIDEPOT","COUNT":<VAL>,"VAL":<ADC Value>\n
+
+// Sensor Setup Update:
+//#define TSL2561_ADDR 0x29 // 41
+// input:  json:{"CMD":"TSL2561","FREQ":<VAL_HZ>,"REQ_ID":<REQ_ID>}\n
+// input:  json:{"CMD":"TSL2561","MSEC":<Milli_Sec>,"REQ_ID":<REQ_ID>}\n
+// input:  json:{"CMD":"TSL2561","FREQ":5,"REQ_ID":70}\n
+// input:  json:{"CMD":"TSL2561","MSEC":1000,"REQ_ID":70}\n
+// output       {"RESP":"TSL2561","REQ_ID":<REQ_ID>}\n
+
+
+// sensor stream update
+// output       {"SENSOR":"TSL2561","COUNT":<VAL>,"VAL":<LUX Value>\n
