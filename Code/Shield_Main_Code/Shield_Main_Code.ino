@@ -20,7 +20,7 @@
 #include "MPU6050.h"
 #include <SFE_BMP180.h>
 #include "I2C_ADC.h"
-#include <Digital_Light_TSL2561.h>
+#include <Digital_Light_TSL2561.h> // library adds 14 millis delay, in order to take a sample. // currently limited to 10 Hz sample rate
 
 ///////////////////////////////////////////////////////////////////////////
 // Communication Object with PI /  PC :  //////////////////////////////////
@@ -192,6 +192,7 @@ void Parser_MSG(){
         SLIDEPOT_Millis_Delay=(unsigned long)json["MSEC"];
       }else if (CMD_Type=="TSL2561"){
         TSL2561_Millis_Delay=(unsigned long)json["MSEC"];
+        if ((TSL2561_Millis_Delay<100)&&(TSL2561_Millis_Delay!=0)) TSL2561_Millis_Delay=100; // Max sample frequency 10 Hz
       }
       // send response:
       SendResponse(json,jsonResp); 
@@ -230,6 +231,8 @@ void Init_I2C(uint8_t I2C_ADDR){
     case MPU6050_ADDR:
       // initialize device
       MPU6050_SENS.initialize();
+      MPU6050_SENS.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+      MPU6050_SENS.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
       Connection_Error_Status=MPU6050_SENS.testConnection();
       #ifdef DEBUGPRINT
         // verify connection
