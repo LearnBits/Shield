@@ -102,7 +102,7 @@ void getValuesMPU6050(unsigned long now) {
   JsonObject& resp = outputJsonBuffer.createObject();
   resp["SAMPLE_ID"] = "MPU6050";
   resp["COUNT"] = MPU6050Count++;
-  JsonArray& jsonArr = resp.createNestedArray("VALUES");
+  JsonArray& jsonArr = resp.createNestedArray("VAL");
   for(int i = 0 ; i < 6 ; i++)
     jsonArr.add(MPU6050gen[i]->next());
   sendMessage(resp);
